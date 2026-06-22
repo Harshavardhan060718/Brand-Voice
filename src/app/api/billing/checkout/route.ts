@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-01-27.acac' as any, // Standard API version placeholder
-});
+const getStripe = () => {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  return new Stripe(key, {
+    apiVersion: '2025-01-27.acac' as any, // Standard API version placeholder
+  });
+};
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +22,8 @@ export async function POST(request: Request) {
 
     // 2. Developer Sandbox Fallback
     // If Stripe credentials are not set, immediately upgrade user in database and return redirect.
-    if (!process.env.STRIPE_SECRET_KEY) {
+    const stripe = getStripe();
+    if (!stripe) {
       // By-pass stripe and set is_pro to true directly
       const { error: updateError } = await supabase
         .from('profiles')

@@ -2,11 +2,20 @@ import { NextResponse } from 'next/server';
 import { createClient as createSupabaseDirect } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-01-27.acac' as any,
-});
+const getStripe = () => {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  return new Stripe(key, {
+    apiVersion: '2025-01-27.acac' as any,
+  });
+};
 
 export async function POST(request: Request) {
+  const stripe = getStripe();
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 });
+  }
+
   const body = await request.text();
   const signature = request.headers.get('stripe-signature') || '';
 
