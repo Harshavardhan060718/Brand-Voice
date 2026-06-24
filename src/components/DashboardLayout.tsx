@@ -15,6 +15,7 @@ import {
   X,
   User
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -23,7 +24,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [usage, setUsage] = useState({ count: 0, isPro: false });
+  const [usage, setUsage] = useState({ count: 0, isPro: false, isAdmin: false });
   const [userEmail, setUserEmail] = useState('');
 
   // Fetch current monthly usage stats dynamically
@@ -35,7 +36,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           const data = await res.json();
           setUsage({
             count: data.metrics.usageCount,
-            isPro: data.metrics.isPro
+            isPro: data.metrics.isPro,
+            isAdmin: data.metrics.isAdmin
           });
           setUserEmail(data.metrics.email);
         }
@@ -51,6 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Brand Profiles', href: '/profiles', icon: Sliders },
     { name: 'Generate Copy', href: '/generate', icon: Zap },
     { name: 'Content Library', href: '/library', icon: FolderHeart },
+    ...(usage.isAdmin ? [{ name: 'Admin Panel', href: '/admin', icon: ShieldCheck }] : []),
   ];
 
   const pageTitle = navigation.find((item) => item.href === pathname)?.name || 'BrandVoice';
@@ -70,12 +73,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
           <span className="font-display font-bold text-lg tracking-tight">BrandVoice</span>
         </div>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-text-secondary hover:text-text-primary focus:outline-none"
-        >
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-text-secondary hover:text-text-primary focus:outline-none p-1"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Navigation */}
@@ -204,6 +210,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
           
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <span className="text-xs text-text-muted bg-surface px-2.5 py-1 border border-border rounded-md font-mono">
               Status: Connected
             </span>

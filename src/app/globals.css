@@ -1,23 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: hsl(210, 40%, 98%);
-  --foreground: hsl(222, 47%, 11%);
-  --surface: hsl(0, 0%, 100%);
-  --border: hsl(214, 32%, 91%);
-  --text-primary: hsl(222, 47%, 11%);
-  --text-secondary: hsl(215, 16%, 47%);
-  --text-muted: hsl(215, 20%, 65%);
+  --background: hsl(36, 33%, 97%);
+  --foreground: hsl(24, 25%, 15%);
+  --surface: hsl(36, 33%, 99%);
+  --border: hsl(36, 18%, 88%);
+  --text-primary: hsl(24, 25%, 15%);
+  --text-secondary: hsl(24, 15%, 42%);
+  --text-muted: hsl(24, 10%, 62%);
+  --shimmer: hsl(36, 20%, 92%);
 }
 
 .dark {
-  --background: hsl(224, 71%, 4%);
+  --background: hsl(220, 18%, 14%);
   --foreground: hsl(210, 40%, 98%);
-  --surface: hsl(222, 47%, 7%);
-  --border: hsl(217, 19%, 19%);
+  --surface: hsl(220, 18%, 20%);
+  --border: hsl(220, 14%, 28%);
   --text-primary: hsl(210, 40%, 98%);
-  --text-secondary: hsl(215, 20%, 75%);
-  --text-muted: hsl(215, 12%, 50%);
+  --text-secondary: hsl(218, 16%, 76%);
+  --text-muted: hsl(218, 10%, 54%);
+  --shimmer: hsl(220, 14%, 25%);
 }
 
 @theme inline {
@@ -61,7 +63,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, var(--surface) 25%, hsl(217, 19%, 15%) 50%, var(--surface) 75%);
+  background: linear-gradient(90deg, var(--surface) 25%, var(--shimmer) 50%, var(--surface) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
 }

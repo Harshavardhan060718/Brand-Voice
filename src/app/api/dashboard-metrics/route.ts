@@ -48,7 +48,7 @@ export async function GET() {
     // 5. Query user subscription metadata
     const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
-      .select('is_pro')
+      .select('is_pro, is_admin')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -56,6 +56,7 @@ export async function GET() {
       return NextResponse.json({ error: profileError.message }, { status: 500 });
     }
     const isPro = userProfile ? userProfile.is_pro : false;
+    const isAdmin = userProfile ? userProfile.is_admin : false;
 
     // 6. Fetch 5 most recent generations joined with brand profile name
     const { data: recentGenerations, error: recentError } = await supabase
@@ -98,6 +99,7 @@ export async function GET() {
         totalGenerations: totalGenerations || 0,
         usageCount,
         isPro,
+        isAdmin,
         email: user.email || 'user@example.com',
         daysUntilReset: diffDays,
         recentGenerations: formattedGenerations

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ShieldCheck, ArrowRight, Zap, Target, Sliders, MessageSquare, Clipboard } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default async function Home() {
   const supabase = await createClient();
@@ -25,6 +26,7 @@ export default async function Home() {
           </div>
 
           <nav className="flex items-center gap-4">
+            <ThemeToggle />
             {user ? (
               <Link
                 href="/dashboard"

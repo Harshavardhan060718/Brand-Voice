@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 import Stripe from 'stripe';
 
 const getStripe = () => {
@@ -24,8 +24,9 @@ export async function POST(request: Request) {
     // If Stripe credentials are not set, immediately upgrade user in database and return redirect.
     const stripe = getStripe();
     if (!stripe) {
-      // By-pass stripe and set is_pro to true directly
-      const { error: updateError } = await supabase
+      // By-pass stripe and set is_pro to true directly using admin client (bypasses RLS)
+      const supabaseAdmin = createAdminClient();
+      const { error: updateError } = await supabaseAdmin
         .from('profiles')
         .update({ is_pro: true })
         .eq('id', user.id);
