@@ -56,3 +56,31 @@ LEFT JOIN public.brand_profiles bp ON g.profile_id = bp.id;
 -- Seed SQL (Uncomment and run with your email to make yourself admin)
 -- ========================================================
 -- UPDATE public.profiles SET is_admin = true WHERE email = 'your-email@example.com';
+
+
+-- ========================================================
+-- AI Feedback & Personalization Loop Table
+-- Run these commands in your Supabase SQL Editor
+-- ========================================================
+
+CREATE TABLE IF NOT EXISTS public.generation_feedback (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    generation_id UUID NOT NULL REFERENCES public.generations(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.generation_feedback ENABLE ROW LEVEL SECURITY;
+
+-- Select policy (users can view their own feedback)
+CREATE POLICY "Users can view their own feedback" 
+    ON public.generation_feedback FOR SELECT 
+    USING (auth.uid() = user_id);
+
+-- Insert policy (users can insert their own feedback)
+CREATE POLICY "Users can insert their own feedback" 
+    ON public.generation_feedback FOR INSERT 
+    WITH CHECK (auth.uid() = user_id);

@@ -18,7 +18,9 @@ import {
   Image,
   Download,
   Palette,
-  RefreshCw
+  RefreshCw,
+  Star,
+  MessageSquare
 } from 'lucide-react';
 
 interface BrandProfile {
@@ -71,6 +73,14 @@ function GeneratorForm() {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
+  // AI Feedback states
+  const [generationId, setGenerationId] = useState<string | null>(null);
+  const [rating, setRating] = useState<number>(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
   const handleGenerateImage = async () => {
     if (!suggestedPrompt) return;
     setGeneratingImage(true);
@@ -112,6 +122,37 @@ function GeneratorForm() {
       console.error('Image download failed', err);
       // Fallback
       window.open(imageUrl, '_blank');
+    }
+  };
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!generationId || rating === 0) return;
+
+    setSubmittingFeedback(true);
+    setFeedbackError(null);
+
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generationId,
+          rating,
+          comment: feedbackComment
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setFeedbackSubmitted(true);
+      } else {
+        setFeedbackError(data.error || 'Failed to submit feedback.');
+      }
+    } catch (err) {
+      setFeedbackError('A connection error occurred. Please try again.');
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -245,6 +286,13 @@ function GeneratorForm() {
         setSuggestedPrompt(data.suggestedImagePrompt || '');
         setImageUrl('');
         setImageError(null);
+        
+        // Save new generation details and reset feedback state
+        setGenerationId(data.id || null);
+        setRating(0);
+        setFeedbackComment('');
+        setFeedbackSubmitted(false);
+        setFeedbackError(null);
         
         // Trigger success confetti pop!
         confetti({
@@ -502,6 +550,92 @@ function GeneratorForm() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* 3.5. Feedback / Personalization Card */}
+            {!generating && variants.length > 0 && generationId && (
+              <div className="bg-surface/50 border border-border/80 rounded-xl p-6 backdrop-blur-md space-y-4 text-left animate-fadeIn mt-6 animate-fade-in">
+                <div className="border-b border-border/60 pb-3 flex items-center gap-1.5 text-text-primary justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <MessageSquare className="h-4 w-4 text-brand-primary" />
+                    <span className="font-display font-bold text-sm">Train Your Copywriter AI</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-brand-primary/10 text-brand-primary text-[9px] font-semibold font-mono uppercase tracking-wide">
+                    Personalization Loop
+                  </span>
+                </div>
+
+                {feedbackSubmitted ? (
+                  <div className="p-4 bg-success/10 border border-success/20 rounded-xl text-success text-xs text-center space-y-2 py-6">
+                    <Sparkles className="h-6 w-6 text-success mx-auto animate-bounce" />
+                    <p className="font-bold">Preferences Saved!</p>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      The AI has updated its writing profile based on your rating and critique. Future generations will automatically respect these preferences.
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+                        Rate the Quality of This Copy
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setRating(star)}
+                            className="p-1 cursor-pointer transition-transform hover:scale-110 focus:outline-none"
+                          >
+                            <Star
+                              className={`h-6 w-6 ${
+                                star <= rating
+                                  ? 'text-warning fill-warning'
+                                  : 'text-text-muted hover:text-warning'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {rating > 0 && (
+                      <div className="space-y-2 animate-fade-in">
+                        <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+                          {rating >= 4 
+                            ? "What did you like? (Reinforce positive style)" 
+                            : "What should the AI do differently next time?"}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={feedbackComment}
+                          onChange={(e) => setFeedbackComment(e.target.value)}
+                          placeholder={
+                            rating >= 4
+                              ? "e.g., 'Loved the cinematic hook', 'The bullet points were very neat'"
+                              : "e.g., 'Make it punchier', 'Do not use emojis', 'Avoid long paragraphs'"
+                          }
+                          className="block w-full p-3 rounded-lg border border-border bg-background/30 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all resize-none"
+                        />
+                        
+                        <button
+                          type="submit"
+                          disabled={submittingFeedback}
+                          className="w-full h-10 flex items-center justify-center gap-1.5 rounded-lg bg-brand-primary hover:bg-brand-hover text-white text-xs font-semibold shadow-md shadow-brand-primary/10 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                        >
+                          {submittingFeedback ? 'Saving preferences...' : 'Train AI with Feedback'}
+                        </button>
+                      </div>
+                    )}
+
+                    {feedbackError && (
+                      <p className="text-xs text-danger font-semibold mt-1">
+                        {feedbackError}
+                      </p>
+                    )}
+                  </form>
+                )}
               </div>
             )}
 

@@ -269,6 +269,35 @@ export async function POST(request: Request) {
       }
     } catch (e) {}
 
+    // Fetch user's recent feedback comments to inject into the system prompt for learning
+    const { data: recentFeedback } = await supabase
+      .from('generation_feedback')
+      .select('rating, comment')
+      .eq('user_id', user.id)
+      .not('comment', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(8);
+
+    const positiveFeedbackList: string[] = [];
+    const negativeFeedbackList: string[] = [];
+
+    if (recentFeedback && recentFeedback.length > 0) {
+      recentFeedback.forEach(f => {
+        if (f.rating >= 4 && f.comment && f.comment.trim()) {
+          positiveFeedbackList.push(f.comment.trim());
+        } else if (f.rating <= 2 && f.comment && f.comment.trim()) {
+          negativeFeedbackList.push(f.comment.trim());
+        }
+      });
+    }
+
+    const feedbackDirective = `
+${positiveFeedbackList.length > 0 ? `USER WRITING PREFERENCES (Reinforce these positives):
+${positiveFeedbackList.map(c => `- ${c}`).join('\n')}` : ''}
+${negativeFeedbackList.length > 0 ? `USER CRITIQUE HISTORY (Avoid these issues/errors):
+${negativeFeedbackList.map(c => `- ${c}`).join('\n')}` : ''}
+    `.trim();
+
     // 6. Compile System Prompt & User Prompt
     const systemPrompt = `
 You are an expert marketing copywriter and brand strategist.
@@ -279,6 +308,11 @@ BRAND CRITERIA:
 - Target Audience: ${brand.audience}
 - Product/Service Description: ${brand.product_desc}
 ${brand.avoid_words ? `- CRITICAL: Do NOT use any of the following words/phrases under any circumstance: ${brand.avoid_words}` : ""}
+
+${feedbackDirective ? `PERSONALIZED USER PREFERENCES & HISTORY (CRITICAL):
+The user has provided direct feedback on your past generated copies. You MUST strictly align the new variations with these preferences:
+${feedbackDirective}
+` : ''}
 
 Ensure the output appeals directly to the Target Audience, highlights the value points in the Product Description, and matches the specified Tone of Voice.
 
@@ -372,7 +406,7 @@ CRITICAL INSTRUCTIONS:
     // 8. Log Generation History in database
     const mergedOutputs = `Variant 1:\n${sanitizedVariants[0]}\n\nVariant 2:\n${sanitizedVariants[1]}\n\nVariant 3:\n${sanitizedVariants[2]}`;
 
-    const { error: insertError } = await supabase
+    const { data: insertedGen, error: insertError } = await supabase
       .from('generations')
       .insert({
         user_id: user.id,
@@ -380,7 +414,9 @@ CRITICAL INSTRUCTIONS:
         content_type: contentType,
         prompt_used: promptUsed,
         output: mergedOutputs
-      });
+      })
+      .select('id')
+      .single();
 
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
@@ -404,6 +440,7 @@ CRITICAL INSTRUCTIONS:
     }
 
     return NextResponse.json({ 
+      id: insertedGen?.id || null,
       variants: sanitizedVariants,
       suggestedImagePrompt: imagePrompt
     });
