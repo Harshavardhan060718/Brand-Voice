@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     // 4. Call Hugging Face Inference API for FLUX.1-schnell
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
+      'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
       {
         headers: {
           'Authorization': `Bearer ${hfToken}`,
