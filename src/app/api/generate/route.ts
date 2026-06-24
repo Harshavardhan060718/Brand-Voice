@@ -284,9 +284,10 @@ Ensure the output appeals directly to the Target Audience, highlights the value 
 
 CRITICAL INSTRUCTIONS:
 - You must output exactly 3 distinct variations of the copy.
-- The output format must be a valid JSON object containing a "variants" array with exactly 3 items.
-- Structure: { "variants": ["variant 1 copy", "variant 2 copy", "variant 3 copy"] }
-- Return ONLY the raw JSON block. No markdown wrapper like \`\`\`json.
+- You must also output a suggested image generation prompt that describes a suitable image to accompany this copy (e.g. for an Instagram post, Facebook post, or ad banner).
+- The output format must be a valid JSON object containing a "variants" array with exactly 3 items, and a "suggestedImagePrompt" string.
+- Structure: { "variants": ["variant 1", "variant 2", "variant 3"], "suggestedImagePrompt": "detailed description of matching visual concept" }
+- Return ONLY the raw JSON block. No markdown code blocks (do not wrap in triple backticks).
 `;
 
     let userPrompt = `Generate a ${contentType} based on the following specific instructions:\n"${instruction}"\n`;
@@ -296,6 +297,7 @@ CRITICAL INSTRUCTIONS:
 
     // 7. Make Real OpenAI Call
     let variants: string[] = [];
+    let imagePrompt = '';
     try {
       const response = await openai.chat.completions.create({
         model: 'gpt-4o',
@@ -319,9 +321,11 @@ CRITICAL INSTRUCTIONS:
         variants.push(variants[0] || 'Generated copy variation');
       }
       variants = variants.slice(0, 3);
+      imagePrompt = parsedData.suggestedImagePrompt || `A creative visual representing ${contentType} for ${brand.name}`;
     } catch (err: any) {
       console.warn('OpenAI generation failed, falling back to local generation:', err);
       variants = generateLocalFallback(brand, contentType, instruction, examples);
+      imagePrompt = `A high quality, modern commercial photograph representing a ${contentType} for ${brand.name}`;
     }
 
     // Sanitize avoid words
@@ -376,7 +380,10 @@ CRITICAL INSTRUCTIONS:
       return NextResponse.json({ error: incrementError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ variants: sanitizedVariants });
+    return NextResponse.json({ 
+      variants: sanitizedVariants,
+      suggestedImagePrompt: imagePrompt
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

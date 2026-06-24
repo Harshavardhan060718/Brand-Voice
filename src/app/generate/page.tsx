@@ -14,7 +14,11 @@ import {
   Sliders,
   Type,
   AlertTriangle,
-  FolderHeart
+  FolderHeart,
+  Image,
+  Download,
+  Palette,
+  RefreshCw
 } from 'lucide-react';
 
 interface BrandProfile {
@@ -60,6 +64,56 @@ function GeneratorForm() {
   const [error, setError] = useState<string | null>(null);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // AI Image Generation states
+  const [suggestedPrompt, setSuggestedPrompt] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  const handleGenerateImage = async () => {
+    if (!suggestedPrompt) return;
+    setGeneratingImage(true);
+    setImageError(null);
+    setImageUrl('');
+    try {
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: suggestedPrompt })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setImageUrl(data.url);
+      } else {
+        setImageError(data.error || 'Failed to generate image.');
+      }
+    } catch (err) {
+      setImageError('Connection error occurred while generating image.');
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    if (!imageUrl) return;
+    try {
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `brandvoice-visual-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Image download failed', err);
+      // Fallback
+      window.open(imageUrl, '_blank');
+    }
+  };
 
   const handleUpgrade = async () => {
     setCheckoutLoading(true);
@@ -188,6 +242,9 @@ function GeneratorForm() {
 
       if (res.ok) {
         setVariants(data.variants || []);
+        setSuggestedPrompt(data.suggestedImagePrompt || '');
+        setImageUrl('');
+        setImageError(null);
         
         // Trigger success confetti pop!
         confetti({
@@ -445,6 +502,111 @@ function GeneratorForm() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* 4. Suggested Visual / DALL-E Image Card */}
+            {!generating && variants.length > 0 && suggestedPrompt && (
+              <div className="bg-surface/50 border border-border/80 rounded-xl p-6 backdrop-blur-md space-y-6 text-left animate-fadeIn mt-6">
+                <div className="border-b border-border/60 pb-3 flex items-center gap-1.5 text-text-primary justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Palette className="h-4 w-4 text-brand-primary" />
+                    <span className="font-display font-bold text-sm">Suggested Visual Concept</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-md bg-brand-primary/10 border border-brand-primary/20 text-brand-primary font-semibold text-[9px] tracking-wide uppercase font-mono">
+                    DALL-E 3
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-xs text-text-secondary leading-relaxed bg-background/30 p-4 border border-border/60 rounded-xl font-medium italic">
+                    "{suggestedPrompt}"
+                  </p>
+                  
+                  {/* Generate Button */}
+                  {!imageUrl && !generatingImage && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateImage}
+                      className="w-full h-11 flex items-center justify-center gap-2 rounded-lg bg-brand-primary hover:bg-brand-hover text-white text-xs font-semibold shadow-md shadow-brand-primary/10 transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                      <Image className="h-4 w-4" />
+                      Generate Visual Recommendation
+                    </button>
+                  )}
+
+                  {/* Loading State */}
+                  {generatingImage && (
+                    <div className="border border-border/85 rounded-xl p-8 bg-background/20 text-center space-y-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-brand-primary mx-auto" />
+                      <div>
+                        <p className="text-xs font-bold text-text-primary">DALL-E 3 is painting your concept...</p>
+                        <p className="text-[10px] text-text-muted mt-1 leading-normal">
+                          This usually takes around 8-15 seconds. Please do not close this window.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error State */}
+                  {imageError && (
+                    <div className="p-4 rounded-lg bg-danger/10 border border-danger/25 text-danger text-xs leading-relaxed">
+                      {imageError}
+                      <button
+                        type="button"
+                        onClick={handleGenerateImage}
+                        className="w-full h-9 flex items-center justify-center gap-1.5 rounded bg-danger text-white text-xs font-semibold hover:bg-danger/90 cursor-pointer mt-3 transition-colors"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Try Again
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Success Image Card */}
+                  {imageUrl && (
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="relative aspect-square w-full max-w-md mx-auto overflow-hidden rounded-xl border border-border/80 shadow-lg group/img">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                          src={imageUrl} 
+                          alt="DALL-E generated visual"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button
+                          type="button"
+                          onClick={handleDownloadImage}
+                          className="h-10 px-5 flex items-center justify-center gap-2 rounded-lg bg-success hover:bg-success/90 text-white text-xs font-semibold shadow-md shadow-success/10 transition-all cursor-pointer"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download Image
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(imageUrl);
+                            alert('Image URL copied to clipboard! (Note: Link expires in 1 hour)');
+                          }}
+                          className="h-10 px-5 flex items-center justify-center gap-2 rounded-lg border border-border bg-surface hover:bg-border text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+                        >
+                          <Clipboard className="h-4 w-4" />
+                          Copy Temporary Link
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGenerateImage}
+                          className="h-10 px-5 flex items-center justify-center gap-2 rounded-lg border border-brand-primary/20 hover:border-brand-primary/45 bg-brand-primary/5 hover:bg-brand-primary/10 text-xs font-semibold text-brand-primary transition-all cursor-pointer"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Regenerate Concept
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
