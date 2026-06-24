@@ -1,14 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
-import Stripe from 'stripe';
-
-const getStripe = () => {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  return new Stripe(key, {
-    apiVersion: '2025-01-27.acac' as any, // Standard API version placeholder
-  });
-};
 
 export async function POST(request: Request) {
   try {
@@ -20,11 +11,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const planId = process.env.RAZORPAY_PLAN_ID;
+
     // 2. Developer Sandbox Fallback
-    // If Stripe credentials are not set, immediately upgrade user in database and return redirect.
-    const stripe = getStripe();
-    if (!stripe) {
-      // By-pass stripe and set is_pro to true directly using admin client (bypasses RLS)
+    // If Razorpay keys are not configured, bypass and upgrade directly for local testing.
+    if (!keyId || !keySecret || !planId) {
+      // By-pass payment and set is_pro to true directly using admin client (bypasses RLS)
       const supabaseAdmin = createAdminClient();
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
@@ -38,34 +32,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ url: '/dashboard?upgrade=success' });
     }
 
-    // 3. Real Stripe Checkout Setup
-    const { origin } = new URL(request.url);
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'BrandVoice Pro Plan',
-              description: 'Unlimited AI content generations and brand profiles.',
-            },
-            unit_amount: 1900, // $19.00 USD
-            recurring: { interval: 'month' },
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: `${origin}/dashboard?upgrade=success`,
-      cancel_url: `${origin}/dashboard?upgrade=cancel`,
-      customer_email: user.email,
-      metadata: {
-        userId: user.id,
+    // 3. Real Razorpay Subscription Setup
+    const authString = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    
+    const response = await fetch('https://api.razorpay.com/v1/subscriptions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${authString}`,
       },
+      body: JSON.stringify({
+        plan_id: planId,
+        total_count: 600, // 50 years of billing cycles
+        quantity: 1,
+        customer_notify: 1,
+        notes: {
+          userId: user.id
+        }
+      }),
     });
 
-    return NextResponse.json({ url: session.url });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.description || 'Razorpay subscription creation failed');
+    }
+
+    // Return the hosted payment checkout url
+    return NextResponse.json({ url: data.short_url });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

@@ -1,76 +1,76 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseDirect } from '@supabase/supabase-js';
-import Stripe from 'stripe';
-
-const getStripe = () => {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  return new Stripe(key, {
-    apiVersion: '2025-01-27.acac' as any,
-  });
-};
+import crypto from 'crypto';
 
 export async function POST(request: Request) {
-  const stripe = getStripe();
-  if (!stripe) {
-    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 });
-  }
-
-  const body = await request.text();
-  const signature = request.headers.get('stripe-signature') || '';
-
-  let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET || ''
-    );
-  } catch (err: any) {
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
-  }
+    const signature = request.headers.get('x-razorpay-signature') || '';
+    const body = await request.text();
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-  // Create an admin Supabase client using the Service Role Key to bypass RLS policies
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabaseAdmin = createSupabaseDirect(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+    if (!webhookSecret) {
+      return NextResponse.json({ error: 'Webhook secret is not configured' }, { status: 500 });
+    }
 
-  const session = event.data.object as any;
+    // 1. Verify Razorpay Webhook Signature
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(body)
+      .digest('hex');
 
-  if (event.type === 'checkout.session.completed') {
-    const userId = session.metadata?.userId;
-    if (userId) {
+    if (expectedSignature !== signature) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    }
+
+    const event = JSON.parse(body);
+
+    // 2. Initialize Admin Supabase Client (bypasses RLS)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createSupabaseDirect(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const subscription = event.payload?.subscription?.entity;
+    const userId = subscription?.notes?.userId;
+
+    if (!userId) {
+      // Return 200 to acknowledge the event if notes or userId is not relevant (e.g. system tests)
+      return NextResponse.json({ received: true, info: 'No user ID in event notes' });
+    }
+
+    // 3. Process Events
+    // subscription.charged - when billing is successful
+    if (event.event === 'subscription.charged') {
       const { error } = await supabaseAdmin
         .from('profiles')
         .update({ is_pro: true })
         .eq('id', userId);
       
       if (error) {
-        console.error('Failed to update user billing status on checkout', error);
+        console.error('Failed to upgrade billing status on subscription charge', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
     }
-  }
 
-  if (event.type === 'customer.subscription.deleted') {
-    const customerEmail = session.customer_details?.email || session.email;
-    if (customerEmail) {
+    // subscription.cancelled or subscription.halted - when cancelled
+    if (event.event === 'subscription.cancelled' || event.event === 'subscription.halted') {
       const { error } = await supabaseAdmin
         .from('profiles')
         .update({ is_pro: false })
-        .eq('email', customerEmail);
+        .eq('id', userId);
 
       if (error) {
-        console.error('Failed to revoke billing status on cancellation', error);
+        console.error('Failed to revoke billing status on subscription cancel', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
     }
-  }
 
-  return NextResponse.json({ received: true });
+    return NextResponse.json({ received: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
