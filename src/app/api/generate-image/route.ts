@@ -1,11 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import OpenAI from 'openai';
-
-// Initialize OpenAI client using the secret key stored in .env.local
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
 
 export async function POST(request: Request) {
   try {
@@ -25,36 +19,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing prompt parameter.' }, { status: 400 });
     }
 
-    // 3. Generate Image using OpenAI (with DALL-E 3 and automatic DALL-E 2 fallback)
-    let imageUrl = '';
-    try {
-      const response = await openai.images.generate({
-        model: 'dall-e-3',
-        prompt: prompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'standard',
-      });
-      imageUrl = response.data?.[0]?.url || '';
-    } catch (dalle3Error: any) {
-      console.warn('DALL-E 3 is not available on this account tier. Falling back to DALL-E 2:', dalle3Error);
-      
-      // Fallback to DALL-E 2 (512x512 resolution, which has wider availability)
-      const response = await openai.images.generate({
-        model: 'dall-e-2',
-        prompt: prompt,
-        n: 1,
-        size: '512x512',
-      });
-      imageUrl = response.data?.[0]?.url || '';
+    const hfToken = process.env.HF_ACCESS_TOKEN;
+
+    // 3. Sandbox Mode Fallback
+    if (!hfToken) {
+      // Return a beautiful generic creative visual placeholder if no token is configured
+      const placeholderUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
+      return NextResponse.json({ url: placeholderUrl, isSandbox: true });
     }
 
-    if (!imageUrl) {
-      throw new Error('DALL-E did not return any image URL.');
+    // 4. Call Hugging Face Inference API for FLUX.1-schnell
+    const response = await fetch(
+      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
+      {
+        headers: {
+          'Authorization': `Bearer ${hfToken}`,
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify({ inputs: prompt }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      let errMsg = 'Failed to generate image via Hugging Face.';
+      try {
+        const errJson = JSON.parse(errText);
+        // Hugging Face sometimes returns model loading alerts (estimated_time)
+        errMsg = errJson.error || errMsg;
+      } catch (e) {}
+      throw new Error(errMsg);
     }
 
-    // 4. Return the hosted image URL
-    return NextResponse.json({ url: imageUrl });
+    // 5. Convert Image Buffer to Base64 Data URL
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Image = Buffer.from(arrayBuffer).toString('base64');
+    const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+
+    return NextResponse.json({ url: dataUrl });
   } catch (err: any) {
     console.error('Image generation error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
