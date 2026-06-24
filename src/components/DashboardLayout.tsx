@@ -26,6 +26,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [usage, setUsage] = useState({ count: 0, isPro: false, isAdmin: false });
   const [userEmail, setUserEmail] = useState('');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleUpgrade = async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch('/api/billing/checkout', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        window.location.href = data.url;
+      } else {
+        alert('Billing upgrade session initialization failed.');
+      }
+    } catch (err) {
+      console.error('Checkout redirect failed', err);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   // Fetch current monthly usage stats dynamically
   useEffect(() => {
@@ -163,9 +181,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
               <div className="space-y-1">
                 <span className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider block">Free Generations</span>
-                <Link href="/dashboard" className="text-xs font-semibold text-brand-primary hover:text-brand-hover transition-colors block">
-                  Upgrade to Pro
-                </Link>
+                <button
+                  onClick={handleUpgrade}
+                  disabled={checkoutLoading}
+                  className="text-xs font-semibold text-brand-primary hover:text-brand-hover transition-colors block text-left cursor-pointer focus:outline-none disabled:opacity-50"
+                >
+                  {checkoutLoading ? 'Redirecting...' : 'Upgrade to Pro'}
+                </button>
               </div>
             </div>
           ) : (
