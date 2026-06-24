@@ -321,11 +321,34 @@ CRITICAL INSTRUCTIONS:
         variants.push(variants[0] || 'Generated copy variation');
       }
       variants = variants.slice(0, 3);
-      imagePrompt = parsedData.suggestedImagePrompt || `A creative visual representing ${contentType} for ${brand.name}`;
+      const cleanInstruction = instruction
+        .replace(/https?:\/\/[^\s]+/g, '')
+        .replace(/#\w+/g, '')
+        .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const shortInstruction = cleanInstruction.length > 200 ? cleanInstruction.substring(0, 200) + '...' : cleanInstruction;
+
+      const productDetail = brand.product_desc ? `, displaying: ${brand.product_desc}` : '';
+      const contextDetail = shortInstruction ? `, related to: ${shortInstruction}` : '';
+
+      imagePrompt = parsedData.suggestedImagePrompt || `A high-quality, professional commercial product advertisement photograph of ${brand.name}${productDetail}${contextDetail}. Styled for ${contentType}, modern aesthetic, clean studio lighting, high resolution.`;
     } catch (err: any) {
       console.warn('OpenAI generation failed, falling back to local generation:', err);
       variants = generateLocalFallback(brand, contentType, instruction, examples);
-      imagePrompt = `A high quality, modern commercial photograph representing a ${contentType} for ${brand.name}`;
+
+      const cleanInstruction = instruction
+        .replace(/https?:\/\/[^\s]+/g, '')
+        .replace(/#\w+/g, '')
+        .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const shortInstruction = cleanInstruction.length > 200 ? cleanInstruction.substring(0, 200) + '...' : cleanInstruction;
+
+      const productDetail = brand.product_desc ? `, displaying: ${brand.product_desc}` : '';
+      const contextDetail = shortInstruction ? `, related to: ${shortInstruction}` : '';
+
+      imagePrompt = `A high-quality, professional commercial product advertisement photograph of ${brand.name}${productDetail}${contextDetail}. Styled for ${contentType}, modern aesthetic, clean studio lighting, high resolution.`;
     }
 
     // Sanitize avoid words

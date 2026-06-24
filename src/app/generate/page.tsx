@@ -505,7 +505,7 @@ function GeneratorForm() {
               </div>
             )}
 
-            {/* 4. Suggested Visual / DALL-E Image Card */}
+             {/* 4. Suggested Visual / FLUX Image Card */}
             {!generating && variants.length > 0 && suggestedPrompt && (
               <div className="bg-surface/50 border border-border/80 rounded-xl p-6 backdrop-blur-md space-y-6 text-left animate-fadeIn mt-6">
                 <div className="border-b border-border/60 pb-3 flex items-center gap-1.5 text-text-primary justify-between">
@@ -514,14 +514,24 @@ function GeneratorForm() {
                     <span className="font-display font-bold text-sm">Suggested Visual Concept</span>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-md bg-brand-primary/10 border border-brand-primary/20 text-brand-primary font-semibold text-[9px] tracking-wide uppercase font-mono">
-                    DALL-E 3
+                    FLUX.1
                   </span>
                 </div>
 
                 <div className="space-y-3">
-                  <p className="text-xs text-text-secondary leading-relaxed bg-background/30 p-4 border border-border/60 rounded-xl font-medium italic">
-                    "{suggestedPrompt}"
-                  </p>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                      Visual Prompt (Editable)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={suggestedPrompt}
+                      onChange={(e) => setSuggestedPrompt(e.target.value)}
+                      disabled={generatingImage}
+                      className="block w-full p-4 rounded-xl border border-border bg-background/30 text-xs text-text-primary focus:outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all resize-none font-medium italic"
+                      placeholder="Describe the visual concept you want FLUX to generate..."
+                    />
+                  </div>
                   
                   {/* Generate Button */}
                   {!imageUrl && !generatingImage && (
@@ -540,9 +550,9 @@ function GeneratorForm() {
                     <div className="border border-border/85 rounded-xl p-8 bg-background/20 text-center space-y-4">
                       <Loader2 className="h-8 w-8 animate-spin text-brand-primary mx-auto" />
                       <div>
-                        <p className="text-xs font-bold text-text-primary">DALL-E 3 is painting your concept...</p>
+                        <p className="text-xs font-bold text-text-primary">FLUX is painting your concept...</p>
                         <p className="text-[10px] text-text-muted mt-1 leading-normal">
-                          This usually takes around 8-15 seconds. Please do not close this window.
+                          This usually takes around 2-5 seconds. Please do not close this window.
                         </p>
                       </div>
                     </div>
@@ -570,7 +580,7 @@ function GeneratorForm() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
                           src={imageUrl} 
-                          alt="DALL-E generated visual"
+                          alt="FLUX generated visual"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
                         />
                       </div>
