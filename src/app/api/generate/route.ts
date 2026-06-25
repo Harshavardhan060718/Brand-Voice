@@ -319,9 +319,14 @@ Ensure the output appeals directly to the Target Audience, highlights the value 
 CRITICAL INSTRUCTIONS:
 - You must output exactly 3 distinct variations of the copy.
 - You must also output a suggested image generation prompt that describes a suitable image to accompany this copy (e.g. for an Instagram post, Facebook post, or ad banner).
-- The suggested image prompt (suggestedImagePrompt) MUST be highly detailed, accurate, and specific (similar to a professional commercial studio photograph). Avoid short, generic descriptions. Describe in detail the subject, layout, composition, perspective (e.g., isometric 3/4 view, flat lay), background, textures, text on screens (if any), styling, lighting (e.g., clean, soft studio lighting), and depth of field (e.g., shallow depth of field). Specify exact textual displays on screen mockups (like customer chats, workflow charts, or features badges) rather than just stating "screen details".
+- The suggested image prompt (suggestedImagePrompt) MUST be extremely long, detailed, accurate, and structured in multiple paragraphs (exactly like a high-end visual brief). It must describe:
+  - Overall Scene & Mood: Core concept representing the brand, modern lifestyle/minimalist aesthetics, brand tone.
+  - Foreground Elements (Central Focus): Detail the main subject, materials, concrete plinths, exact text plates (with precise wording representing the brand and call-to-action), sculptures, holographic/screen overlays (with specific options (A), (B), (C) reflecting the brand services), network graphics, etc.
+  - Midground & Background (Context & Depth): The background environment (e.g. office with desks, monitors, people working), background signs/logos, plants, windows, branding details.
+  - Lighting & Texture Instructions: Studio lighting, shadows, highlight details (brushed metal, chrome reflection, concrete grain), LED brightness.
+  - Keywords: Standard professional high-fidelity rendering keywords (e.g., Professional Commercial Shot, High Fidelity, 8k Resolution, Photorealistic, Masterpiece, Detail-Oriented, Corporate Engineering Aesthetic).
 - The output format must be a valid JSON object containing a "variants" array with exactly 3 items, and a "suggestedImagePrompt" string.
-- Structure: { "variants": ["variant 1", "variant 2", "variant 3"], "suggestedImagePrompt": "highly detailed, specific, multi-sentence description of matching visual concept including composition, text-on-screen values, lighting, textures, and style" }
+- Structure: { "variants": ["variant 1", "variant 2", "variant 3"], "suggestedImagePrompt": "extremely detailed, long multi-paragraph description outlining Foreground, Background, and Lighting instructions, with exact text-on-screen values, textures, and style keywords" }
 - Return ONLY the raw JSON block. No markdown code blocks (do not wrap in triple backticks).
 `;
 
@@ -369,7 +374,23 @@ CRITICAL INSTRUCTIONS:
       const audienceContext = brand.audience ? `, designed to engage ${brand.audience}` : '';
       const moodContext = brand.tone ? ` reflecting a ${brand.tone} mood` : '';
 
-      imagePrompt = parsedData.suggestedImagePrompt || `A photorealistic, high-resolution commercial product advertisement photograph representing "${brand.name}". The scene features a modern lifestyle setting with clean, minimalist aesthetics${moodContext}. The primary focus is a professionally arranged product setup${productDetail}${contextDetail}${audienceContext}. The composition is in a detailed isometric 3/4 view, resting on a clean, light-grey textured concrete plinth. The lighting is clean, soft, and dramatic, reminiscent of a professional studio setup to emphasize textures. The background is minimal, gently blurred with a shallow depth of field, creating a sophisticated, high-end commercial feel. Styled for a premium ${contentType} visual campaign.`;
+      imagePrompt = parsedData.suggestedImagePrompt || `A photorealistic, high-resolution commercial product advertisement photograph representing "${brand.name}". The scene features a modern lifestyle setting with clean, minimalist aesthetics${moodContext}. The primary focus is a professionally arranged product setup${productDetail}${contextDetail}${audienceContext}.
+
+Foreground Elements (Central Focus):
+- The Plinth: The primary subject is a massive, textured light-grey cast concrete block with visible grain and small air pockets, suggesting weight and industrial craftsmanship.
+- Text (Metal Plate): Affixed to the front face of the concrete plinth is a precision-engraved, brushed stainless steel plaque. The text on the plaque must be crystal clear, perfectly legible, and rendered in a clean, professional sans-serif font: "${brand.name.toUpperCase()}" as the main header, with detail text describing "${brand.product_desc || 'AI & Web Engineering'}" and a call-to-action details based on "${shortInstruction || 'Digital Strategy Call'}".
+- Symbolic Sculpture: Perched on top of the concrete plinth is a detailed "atoms" sculpture, crafted from interlocking, highly polished chrome or steel spheres. Each sphere must contain an intricately illuminated geometric lattice (like a futuristic atom structure) with crisp, white LED light.
+- Text (Holographic Overlay): Floating adjacent to the atom sculpture is a transparent, curved, interactive glass or translucent acrylic screen. It must have sharp, crisp, illuminated white and purple graphical overlays with perfect text and icons showcasing: (A) high-performance systems, (B) automated operations, and (C) growth acceleration.
+- Network Graphic: In the upper-right corner of the plinth's area, a stylized, crystalline 3D geometric network visualization is linked by delicate light lines to a small floating text panel that reads: "Accelerate B2B Growth | Automate Operations".
+
+Midground & Background (Context & Depth):
+- Office Environment: Beyond the plinth, the office space must be gently blurred (shallow depth of field) but remain recognizable as a busy tech company. Include details like modern white desks, high-resolution monitors, and several blurred professional figures working, reinforcing the company's operational nature.
+- Text & Lighting: On the distant concrete wall, include a large, prominent, blurred neon or backlit 3D sign that displays a stylized "${brand.name.substring(0, 2).toUpperCase()}" logo. Place large potted floor plants (like a Monstera) and high-quality minimalist office furniture to add warmth and corporate context. The background must suggest a high-end corporate location, like a city view through large glass windows.
+- Branding Detail: On the bottom-right corner of the entire final image, include a small, professional, subtly rendered final text logo: "${brand.name}".
+
+Lighting & Texture Instructions:
+- Key: Studio-quality, soft professional lighting with precise directional light to highlight the concrete's rough grain, the metal plaque's brushed finish, and the chrome sculpture's mirror-like surface. The LED elements must be bright but crisp.
+- Keywords: Professional Commercial Shot, High Fidelity, 8k Resolution, Photorealistic, Masterpiece, Detail-Oriented, Corporate Engineering Aesthetic, Styled for a premium ${contentType} visual campaign.`;
     } catch (err: any) {
       console.warn('OpenAI generation failed, falling back to local generation:', err);
       variants = generateLocalFallback(brand, contentType, instruction, examples);
@@ -387,7 +408,23 @@ CRITICAL INSTRUCTIONS:
       const audienceContext = brand.audience ? `, designed to engage ${brand.audience}` : '';
       const moodContext = brand.tone ? ` reflecting a ${brand.tone} mood` : '';
 
-      imagePrompt = `A photorealistic, high-resolution commercial product advertisement photograph representing "${brand.name}". The scene features a modern lifestyle setting with clean, minimalist aesthetics${moodContext}. The primary focus is a professionally arranged product setup${productDetail}${contextDetail}${audienceContext}. The composition is in a detailed isometric 3/4 view, resting on a clean, light-grey textured concrete plinth. The lighting is clean, soft, and dramatic, reminiscent of a professional studio setup to emphasize textures. The background is minimal, gently blurred with a shallow depth of field, creating a sophisticated, high-end commercial feel. Styled for a premium ${contentType} visual campaign.`;
+      imagePrompt = `A photorealistic, high-resolution commercial product advertisement photograph representing "${brand.name}". The scene features a modern lifestyle setting with clean, minimalist aesthetics${moodContext}. The primary focus is a professionally arranged product setup${productDetail}${contextDetail}${audienceContext}.
+
+Foreground Elements (Central Focus):
+- The Plinth: The primary subject is a massive, textured light-grey cast concrete block with visible grain and small air pockets, suggesting weight and industrial craftsmanship.
+- Text (Metal Plate): Affixed to the front face of the concrete plinth is a precision-engraved, brushed stainless steel plaque. The text on the plaque must be crystal clear, perfectly legible, and rendered in a clean, professional sans-serif font: "${brand.name.toUpperCase()}" as the main header, with detail text describing "${brand.product_desc || 'AI & Web Engineering'}" and a call-to-action details based on "${shortInstruction || 'Digital Strategy Call'}".
+- Symbolic Sculpture: Perched on top of the concrete plinth is a detailed "atoms" sculpture, crafted from interlocking, highly polished chrome or steel spheres. Each sphere must contain an intricately illuminated geometric lattice (like a futuristic atom structure) with crisp, white LED light.
+- Text (Holographic Overlay): Floating adjacent to the atom sculpture is a transparent, curved, interactive glass or translucent acrylic screen. It must have sharp, crisp, illuminated white and purple graphical overlays with perfect text and icons showcasing: (A) high-performance systems, (B) automated operations, and (C) growth acceleration.
+- Network Graphic: In the upper-right corner of the plinth's area, a stylized, crystalline 3D geometric network visualization is linked by delicate light lines to a small floating text panel that reads: "Accelerate B2B Growth | Automate Operations".
+
+Midground & Background (Context & Depth):
+- Office Environment: Beyond the plinth, the office space must be gently blurred (shallow depth of field) but remain recognizable as a busy tech company. Include details like modern white desks, high-resolution monitors, and several blurred professional figures working, reinforcing the company's operational nature.
+- Text & Lighting: On the distant concrete wall, include a large, prominent, blurred neon or backlit 3D sign that displays a stylized "${brand.name.substring(0, 2).toUpperCase()}" logo. Place large potted floor plants (like a Monstera) and high-quality minimalist office furniture to add warmth and corporate context. The background must suggest a high-end corporate location, like a city view through large glass windows.
+- Branding Detail: On the bottom-right corner of the entire final image, include a small, professional, subtly rendered final text logo: "${brand.name}".
+
+Lighting & Texture Instructions:
+- Key: Studio-quality, soft professional lighting with precise directional light to highlight the concrete's rough grain, the metal plaque's brushed finish, and the chrome sculpture's mirror-like surface. The LED elements must be bright but crisp.
+- Keywords: Professional Commercial Shot, High Fidelity, 8k Resolution, Photorealistic, Masterpiece, Detail-Oriented, Corporate Engineering Aesthetic, Styled for a premium ${contentType} visual campaign.`;
     }
 
     // Sanitize avoid words
