@@ -27,8 +27,10 @@ export async function GET(request: Request) {
         content_type,
         prompt_used,
         output,
+        image_url,
         created_at,
         brand_profiles (
+          id,
           name
         )
       `, { count: 'exact' })
@@ -59,6 +61,7 @@ export async function GET(request: Request) {
       contentType: g.content_type,
       promptUsed: g.prompt_used,
       output: g.output,
+      imageUrl: g.image_url,
       createdAt: g.created_at,
       brandName: g.brand_profiles ? g.brand_profiles.name : 'Unknown Brand',
       profileId: g.brand_profiles ? g.brand_profiles.id : ''

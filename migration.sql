@@ -84,3 +84,29 @@ CREATE POLICY "Users can view their own feedback"
 CREATE POLICY "Users can insert their own feedback" 
     ON public.generation_feedback FOR INSERT 
     WITH CHECK (auth.uid() = user_id);
+
+-- ========================================================
+-- BrandVoice Image Storage Migration
+-- Run these commands in your Supabase SQL Editor
+-- ========================================================
+
+-- 5. Add image_url column to public.generations to store user's generated image link
+ALTER TABLE public.generations 
+ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- 6. Update the admin_generations_log view to include the image_url
+CREATE OR REPLACE VIEW public.admin_generations_log AS
+SELECT 
+    g.id,
+    g.content_type,
+    g.prompt_used,
+    g.output,
+    g.image_url,
+    g.created_at,
+    g.user_id,
+    p.email as user_email,
+    bp.name as brand_name
+FROM public.generations g
+LEFT JOIN public.profiles p ON g.user_id = p.id
+LEFT JOIN public.brand_profiles bp ON g.profile_id = bp.id;
+

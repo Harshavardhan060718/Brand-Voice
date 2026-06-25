@@ -13,6 +13,8 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   Sliders,
   Type,
@@ -30,6 +32,7 @@ interface GenerationLog {
   contentType: string;
   promptUsed: string;
   output: string;
+  imageUrl?: string;
   createdAt: string;
   brandName: string;
   profileId: string;
@@ -90,6 +93,14 @@ export default function LibraryPage() {
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   // Fetch profiles on mount to populate search filter
   useEffect(() => {
@@ -277,90 +288,137 @@ export default function LibraryPage() {
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {generations.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-surface/50 border border-border/80 rounded-xl p-5 hover:border-brand-primary/40 transition-colors flex flex-col justify-between gap-4 text-left relative group animate-fade-in"
-                >
-                  <div className="space-y-3">
-                    {/* Header: Template badge and Date */}
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-md bg-brand-primary/10 border border-brand-primary/20 text-brand-primary font-semibold text-[9px] tracking-wide uppercase font-mono">
-                          {item.contentType}
-                        </span>
-                        <span className="text-[10px] text-text-secondary font-display font-semibold">
-                          Brand: <span className="text-text-primary">{item.brandName}</span>
-                        </span>
+              {generations.map((item) => {
+                const isExpanded = !!expandedIds[item.id];
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-surface/50 border border-border/80 rounded-xl p-5 hover:border-brand-primary/40 transition-colors flex flex-col justify-between gap-4 text-left relative group animate-fade-in"
+                  >
+                    <div className="space-y-3">
+                      {/* Header: Template badge and Brand Name */}
+                      <div className="flex justify-between items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-md bg-brand-primary/10 border border-brand-primary/20 text-brand-primary font-semibold text-[9px] tracking-wide uppercase font-mono">
+                            {item.contentType}
+                          </span>
+                          <span className="text-[10px] text-text-secondary font-display font-semibold">
+                            Brand: <span className="text-text-primary">{item.brandName}</span>
+                          </span>
+                        </div>
                       </div>
-                      
-                      {/* Control Operations */}
-                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleCopyToClipboard(item.output, item.id)}
-                          className="text-text-muted hover:text-text-primary hover:bg-surface/50 p-1.5 rounded-lg transition-colors focus:outline-none cursor-pointer"
-                          title="Copy text"
-                        >
-                          {copiedId === item.id ? (
-                            <Check className="h-3.5 w-3.5 text-success" />
-                          ) : (
-                            <Clipboard className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteModal(item.id)}
-                          className="text-text-muted hover:text-danger hover:bg-danger/10 p-1.5 rounded-lg transition-colors focus:outline-none cursor-pointer"
-                          title="Delete generation log"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
 
-                    {/* Prompt instructions text */}
-                    {(() => {
-                      const parsed = parsePrompt(item.promptUsed);
-                      return (
-                        <div className="space-y-2">
-                          <div>
-                            <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">Input Prompt</span>
-                            <p className="text-xs text-text-secondary italic mt-1 bg-background/30 p-2 border border-border/40 rounded-md">
-                              "{parsed.instruction}"
-                            </p>
-                          </div>
-                          {parsed.examples && (
+                      {/* Prompt instructions text */}
+                      {(() => {
+                        const parsed = parsePrompt(item.promptUsed);
+                        return (
+                          <div className="space-y-3">
                             <div>
-                              <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">Style Reference Examples</span>
-                              <p className="text-[11px] text-text-muted italic mt-1 bg-background/20 p-2 border border-border/40 rounded-md max-h-24 overflow-y-auto whitespace-pre-wrap">
-                                {parsed.examples}
+                              <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">Input Prompt</span>
+                              <p className={`text-xs text-text-secondary italic mt-1 bg-background/30 p-2 border border-border/40 rounded-md ${isExpanded ? '' : 'line-clamp-3'}`} title={parsed.instruction}>
+                                "{parsed.instruction}"
                               </p>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })()}
 
-                    {/* Output result content */}
-                    <div>
-                      <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">Generated Copy</span>
-                      <div className="p-3 bg-background/50 border border-border rounded-lg text-xs leading-relaxed text-text-primary whitespace-pre-wrap mt-1 select-text">
-                        {item.output}
+                            {isExpanded && (
+                              <div className="space-y-3 pt-3 border-t border-border/40 animate-fadeIn">
+                                {parsed.examples && (
+                                  <div>
+                                    <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">Style Reference Examples</span>
+                                    <p className="text-[11px] text-text-muted italic mt-1 bg-background/20 p-2 border border-border/40 rounded-md max-h-24 overflow-y-auto whitespace-pre-wrap">
+                                      {parsed.examples}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Output result content */}
+                                <div>
+                                  <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block">Generated Copy</span>
+                                  <div className="p-3 bg-background/50 border border-border rounded-lg text-xs leading-relaxed text-text-primary whitespace-pre-wrap mt-1 select-text">
+                                    {item.output}
+                                  </div>
+                                </div>
+
+                                {/* Stored Visual Concept Image */}
+                                {item.imageUrl && (
+                                  <div>
+                                    <span className="text-[9px] font-semibold text-text-muted uppercase tracking-wider block mb-1">Generated Visual Concept</span>
+                                    <div className="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-lg border border-border/80 shadow-md group/img">
+                                      <img 
+                                        src={item.imageUrl} 
+                                        alt="Visual Creative Recommendation"
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Expanded Action Buttons */}
+                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+                                  <button
+                                    onClick={() => handleCopyToClipboard(item.output, item.id)}
+                                    className="h-8 px-3 rounded-lg border border-border bg-surface/50 text-text-secondary hover:text-text-primary text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                                    title="Copy generated text"
+                                  >
+                                    {copiedId === item.id ? (
+                                      <>
+                                        <Check className="h-3.5 w-3.5 text-success" />
+                                        Copied!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Clipboard className="h-3.5 w-3.5" />
+                                        Copy Text
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() => setShowDeleteModal(item.id)}
+                                    className="h-8 px-3 rounded-lg border border-border bg-surface/50 text-text-muted hover:text-danger hover:bg-danger/10 hover:border-danger/20 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                                    title="Delete log"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Actions footer (Date, Expand button, and Reuse Parameters link) */}
+                    <div className="border-t border-border/60 pt-3 flex justify-between items-center text-[10px] text-text-muted">
+                      <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                      
+                      <div className="flex items-center gap-4">
+                        <Link
+                          href={`/generate?profileId=${item.profileId}&contentType=${encodeURIComponent(item.contentType)}&promptUsed=${encodeURIComponent(item.promptUsed)}`}
+                          className="text-brand-primary hover:text-brand-hover font-semibold flex items-center gap-0.5 transition-colors"
+                        >
+                          Reuse Parameters &rarr;
+                        </Link>
+                        
+                        <button
+                          onClick={() => toggleExpand(item.id)}
+                          className="text-brand-primary hover:text-brand-hover font-semibold flex items-center gap-0.5 transition-colors cursor-pointer"
+                        >
+                          {isExpanded ? (
+                            <>
+                              Less <ChevronUp className="h-3 w-3" />
+                            </>
+                          ) : (
+                            <>
+                              More <ChevronDown className="h-3 w-3" />
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>
-
-                  {/* Actions footer (Reuse parameters button) */}
-                  <div className="border-t border-border/60 pt-3 flex justify-between items-center text-[10px] text-text-muted">
-                    <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                    <Link
-                      href={`/generate?profileId=${item.profileId}&contentType=${encodeURIComponent(item.contentType)}&promptUsed=${encodeURIComponent(item.promptUsed)}`}
-                      className="text-brand-primary hover:text-brand-hover font-semibold flex items-center gap-0.5 transition-colors"
-                    >
-                      Reuse Parameters &rarr;
-                    </Link>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Pagination Controls bar */}
