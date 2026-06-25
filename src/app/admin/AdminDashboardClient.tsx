@@ -16,7 +16,10 @@ import {
   X,
   ExternalLink,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  Clipboard,
+  Check,
+  Image
 } from 'lucide-react';
 
 interface Metrics {
@@ -41,6 +44,7 @@ interface GenerationLog {
   content_type: string;
   prompt_used: string;
   output: string;
+  image_url?: string;
   created_at: string;
   user_id: string;
   user_email: string;
@@ -51,6 +55,25 @@ interface AdminDashboardClientProps {
   currentUserEmail: string;
   currentUserId: string;
 }
+
+const parsePrompt = (promptStr: string) => {
+  try {
+    if (promptStr.startsWith('{')) {
+      const parsed = JSON.parse(promptStr);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          instruction: parsed.instruction || '',
+          examples: parsed.examples || ''
+        };
+      }
+    }
+  } catch (e) {}
+  return {
+    instruction: promptStr,
+    examples: ''
+  };
+};
+
 
 export default function AdminDashboardClient({ 
   currentUserEmail, 
@@ -75,6 +98,8 @@ export default function AdminDashboardClient({
   
   // Inspect Modal
   const [selectedGen, setSelectedGen] = useState<GenerationLog | null>(null);
+  const [copiedGenId, setCopiedGenId] = useState<string | null>(null);
+  const [deleteGenLoading, setDeleteGenLoading] = useState(false);
 
   // Load metrics
   const fetchMetrics = async () => {
@@ -123,6 +148,38 @@ export default function AdminDashboardClient({
       setGenerationsLoading(false);
     }
   };
+
+  const handleCopyGenOutput = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedGenId(id);
+    setTimeout(() => setCopiedGenId(null), 1500);
+  };
+
+  const handleDeleteGen = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this generation log as an administrator? This action cannot be undone.')) {
+      return;
+    }
+    setDeleteGenLoading(true);
+    try {
+      const res = await fetch(`/api/admin/generations/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setGenerations(prev => prev.filter(g => g.id !== id));
+        setSelectedGen(null);
+        fetchMetrics(); // Refresh metric count
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to delete generation log.');
+      }
+    } catch (err) {
+      console.error('Delete generation error', err);
+      alert('Connection error occurred while deleting generation log.');
+    } finally {
+      setDeleteGenLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     fetchMetrics();
@@ -706,11 +763,13 @@ export default function AdminDashboardClient({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-background/50 border border-border rounded-xl text-xs">
                 <div>
                   <span className="text-[10px] font-semibold text-text-muted uppercase block">User</span>
-                  <span className="font-semibold text-text-primary truncate block mt-0.5">{selectedGen.user_email}</span>
+                  <span className="font-semibold text-text-primary truncate block mt-0.5" title={selectedGen.user_email}>
+                    {selectedGen.user_email || 'anonymous-user'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] font-semibold text-text-muted uppercase block">Brand profile</span>
-                  <span className="font-semibold text-text-primary truncate block mt-0.5">{selectedGen.brand_name}</span>
+                  <span className="font-semibold text-text-primary truncate block mt-0.5">{selectedGen.brand_name || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="text-[10px] font-semibold text-text-muted uppercase block">Type</span>
@@ -725,31 +784,111 @@ export default function AdminDashboardClient({
               </div>
 
               {/* Prompt used */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                  Prompt Instructions
-                </h4>
-                <div className="p-4 bg-background/30 border border-border/80 rounded-xl text-sm leading-relaxed text-text-primary font-mono whitespace-pre-wrap max-h-[150px] overflow-y-auto">
-                  {selectedGen.prompt_used}
-                </div>
-              </div>
+              {(() => {
+                const parsed = parsePrompt(selectedGen.prompt_used);
+                return (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+                        Input Prompt Instruction
+                      </h4>
+                      <div className="p-4 bg-background/30 border border-border/80 rounded-xl text-xs leading-relaxed text-text-primary italic whitespace-pre-wrap max-h-[120px] overflow-y-auto">
+                        "{parsed.instruction}"
+                      </div>
+                    </div>
+
+                    {parsed.examples && (
+                      <div className="space-y-1.5">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+                          Style Reference Examples
+                        </h4>
+                        <div className="p-4 bg-background/20 border border-border/80 rounded-xl text-[11px] leading-relaxed text-text-muted italic whitespace-pre-wrap max-h-[120px] overflow-y-auto">
+                          {parsed.examples}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Output variants */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                  Generated Output (AI Compiler)
-                </h4>
-                <div className="p-4 bg-background border border-border rounded-xl text-sm leading-relaxed text-text-primary whitespace-pre-wrap font-mono min-h-[150px] max-h-[300px] overflow-y-auto relative">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+                    Generated Copy Output
+                  </h4>
+                  <button
+                    onClick={() => handleCopyGenOutput(selectedGen.output, selectedGen.id)}
+                    className="h-7 px-2.5 rounded border border-border bg-surface hover:bg-border text-[10px] font-semibold text-text-secondary hover:text-text-primary transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedGenId === selectedGen.id ? (
+                      <>
+                        <Check className="h-3 w-3 text-success" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard className="h-3 w-3" />
+                        Copy Text
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="p-4 bg-background border border-border rounded-xl text-xs leading-relaxed text-text-primary whitespace-pre-wrap min-h-[150px] max-h-[300px] overflow-y-auto select-text">
                   {selectedGen.output}
                 </div>
               </div>
+
+              {/* Image url concept if exists */}
+              {selectedGen.image_url && (
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+                    Generated Visual Creative
+                  </h4>
+                  <div className="p-2 bg-background border border-border rounded-xl flex items-center justify-start gap-4">
+                    <div className="relative aspect-square w-full max-w-[150px] overflow-hidden rounded-lg border border-border/60 shadow-sm">
+                      <img 
+                        src={selectedGen.image_url} 
+                        alt="Audit Visual Concept" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Image Status</span>
+                      <p className="text-xs text-text-primary font-semibold">Saved in user storage</p>
+                      <a 
+                        href={selectedGen.image_url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-[10px] text-brand-primary hover:text-brand-hover font-bold block mt-1"
+                      >
+                        Open original link &rarr;
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-border/80 bg-surface/50 flex justify-end">
+            <div className="p-6 border-t border-border/80 bg-surface/50 flex justify-between items-center">
+              <button
+                onClick={() => handleDeleteGen(selectedGen.id)}
+                disabled={deleteGenLoading}
+                className="h-10 px-4 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {deleteGenLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Record
+                  </>
+                )}
+              </button>
               <button
                 onClick={() => setSelectedGen(null)}
-                className="px-5 h-11 bg-brand-primary hover:bg-brand-hover text-white font-semibold text-sm rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-brand-primary/10"
+                className="px-5 h-10 bg-brand-primary hover:bg-brand-hover text-white font-semibold text-xs rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-brand-primary/10"
               >
                 Close Audit View
               </button>
