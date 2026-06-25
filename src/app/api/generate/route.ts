@@ -319,9 +319,9 @@ Ensure the output appeals directly to the Target Audience, highlights the value 
 CRITICAL INSTRUCTIONS:
 - You must output exactly 3 distinct variations of the copy.
 - You must also output a suggested image generation prompt that describes a suitable image to accompany this copy (e.g. for an Instagram post, Facebook post, or ad banner).
-- The suggested image prompt (suggestedImagePrompt) MUST be highly detailed, accurate, and specific (similar to a professional commercial studio photograph). Avoid short, generic descriptions. Describe in detail the subject, layout, composition, perspective (e.g., isometric 3/4 view, flat lay), background, textures, text on screens (if any), styling, lighting (e.g., clean, soft studio lighting), and depth of field (e.g., shallow depth of field).
+- The suggested image prompt (suggestedImagePrompt) MUST be highly detailed, accurate, and specific (similar to a professional commercial studio photograph). Avoid short, generic descriptions. Describe in detail the subject, layout, composition, perspective (e.g., isometric 3/4 view, flat lay), background, textures, text on screens (if any), styling, lighting (e.g., clean, soft studio lighting), and depth of field (e.g., shallow depth of field). Specify exact textual displays on screen mockups (like customer chats, workflow charts, or features badges) rather than just stating "screen details".
 - The output format must be a valid JSON object containing a "variants" array with exactly 3 items, and a "suggestedImagePrompt" string.
-- Structure: { "variants": ["variant 1", "variant 2", "variant 3"], "suggestedImagePrompt": "highly detailed description of matching visual concept including composition, lighting, textures, and style" }
+- Structure: { "variants": ["variant 1", "variant 2", "variant 3"], "suggestedImagePrompt": "highly detailed, specific, multi-sentence description of matching visual concept including composition, text-on-screen values, lighting, textures, and style" }
 - Return ONLY the raw JSON block. No markdown code blocks (do not wrap in triple backticks).
 `;
 
