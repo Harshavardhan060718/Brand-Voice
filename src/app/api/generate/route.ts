@@ -319,8 +319,9 @@ Ensure the output appeals directly to the Target Audience, highlights the value 
 CRITICAL INSTRUCTIONS:
 - You must output exactly 3 distinct variations of the copy.
 - You must also output a suggested image generation prompt that describes a suitable image to accompany this copy (e.g. for an Instagram post, Facebook post, or ad banner).
+- The suggested image prompt (suggestedImagePrompt) MUST be highly detailed, accurate, and specific (similar to a professional commercial studio photograph). Avoid short, generic descriptions. Describe in detail the subject, layout, composition, perspective (e.g., isometric 3/4 view, flat lay), background, textures, text on screens (if any), styling, lighting (e.g., clean, soft studio lighting), and depth of field (e.g., shallow depth of field).
 - The output format must be a valid JSON object containing a "variants" array with exactly 3 items, and a "suggestedImagePrompt" string.
-- Structure: { "variants": ["variant 1", "variant 2", "variant 3"], "suggestedImagePrompt": "detailed description of matching visual concept" }
+- Structure: { "variants": ["variant 1", "variant 2", "variant 3"], "suggestedImagePrompt": "highly detailed description of matching visual concept including composition, lighting, textures, and style" }
 - Return ONLY the raw JSON block. No markdown code blocks (do not wrap in triple backticks).
 `;
 
@@ -363,10 +364,12 @@ CRITICAL INSTRUCTIONS:
         .trim();
       const shortInstruction = cleanInstruction.length > 200 ? cleanInstruction.substring(0, 200) + '...' : cleanInstruction;
 
-      const productDetail = brand.product_desc ? `, displaying: ${brand.product_desc}` : '';
-      const contextDetail = shortInstruction ? `, related to: ${shortInstruction}` : '';
+      const productDetail = brand.product_desc ? ` showcasing ${brand.product_desc}` : '';
+      const contextDetail = shortInstruction ? ` themed around "${shortInstruction}"` : '';
+      const audienceContext = brand.audience ? `, designed to engage ${brand.audience}` : '';
+      const moodContext = brand.tone ? ` reflecting a ${brand.tone} mood` : '';
 
-      imagePrompt = parsedData.suggestedImagePrompt || `A high-quality, professional commercial product advertisement photograph of ${brand.name}${productDetail}${contextDetail}. Styled for ${contentType}, modern aesthetic, clean studio lighting, high resolution.`;
+      imagePrompt = parsedData.suggestedImagePrompt || `A photorealistic, high-resolution commercial product advertisement photograph representing "${brand.name}". The scene features a modern lifestyle setting with clean, minimalist aesthetics${moodContext}. The primary focus is a professionally arranged product setup${productDetail}${contextDetail}${audienceContext}. The composition is in a detailed isometric 3/4 view, resting on a clean, light-grey textured concrete plinth. The lighting is clean, soft, and dramatic, reminiscent of a professional studio setup to emphasize textures. The background is minimal, gently blurred with a shallow depth of field, creating a sophisticated, high-end commercial feel. Styled for a premium ${contentType} visual campaign.`;
     } catch (err: any) {
       console.warn('OpenAI generation failed, falling back to local generation:', err);
       variants = generateLocalFallback(brand, contentType, instruction, examples);
@@ -379,10 +382,12 @@ CRITICAL INSTRUCTIONS:
         .trim();
       const shortInstruction = cleanInstruction.length > 200 ? cleanInstruction.substring(0, 200) + '...' : cleanInstruction;
 
-      const productDetail = brand.product_desc ? `, displaying: ${brand.product_desc}` : '';
-      const contextDetail = shortInstruction ? `, related to: ${shortInstruction}` : '';
+      const productDetail = brand.product_desc ? ` showcasing ${brand.product_desc}` : '';
+      const contextDetail = shortInstruction ? ` themed around "${shortInstruction}"` : '';
+      const audienceContext = brand.audience ? `, designed to engage ${brand.audience}` : '';
+      const moodContext = brand.tone ? ` reflecting a ${brand.tone} mood` : '';
 
-      imagePrompt = `A high-quality, professional commercial product advertisement photograph of ${brand.name}${productDetail}${contextDetail}. Styled for ${contentType}, modern aesthetic, clean studio lighting, high resolution.`;
+      imagePrompt = `A photorealistic, high-resolution commercial product advertisement photograph representing "${brand.name}". The scene features a modern lifestyle setting with clean, minimalist aesthetics${moodContext}. The primary focus is a professionally arranged product setup${productDetail}${contextDetail}${audienceContext}. The composition is in a detailed isometric 3/4 view, resting on a clean, light-grey textured concrete plinth. The lighting is clean, soft, and dramatic, reminiscent of a professional studio setup to emphasize textures. The background is minimal, gently blurred with a shallow depth of field, creating a sophisticated, high-end commercial feel. Styled for a premium ${contentType} visual campaign.`;
     }
 
     // Sanitize avoid words
